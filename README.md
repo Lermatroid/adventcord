@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎄 Adventcord
 
-## Getting Started
+Discord webhook notifications for your [Advent of Code](https://adventofcode.com) private leaderboards.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+    *        .  *    .   *       .      *    .  
+ .    *  .    _____   _             _                  _   
+    .    *   |  _  |_| |_ _ ___ ___| |_ ___ ___ ___ _| |  
+  *    .   * |     | . | | | -_|   |  _|  _| . |  _| . |  
+.   *     .  |__|__|___|\_/|___|_|_|_| |___|___|_| |___|  
+    .  *    .        *    .    *      .     *   .    
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Leaderboard Updates** — Get your private leaderboard standings sent to Discord at scheduled hours
+- **New Puzzle Notifications** — Be notified when a new puzzle drops (Dec 1-25)
+- **Role Mentions** — Optionally ping a Discord role with updates
+- **No Session Token Required** — Uses AoC's public read-only leaderboard links
+- **Smart Caching** — Respects AoC's API guidelines with intelligent caching
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Quick Start
 
-## Learn More
+### Using the Hosted Version
 
-To learn more about Next.js, take a look at the following resources:
+1. Get your leaderboard's **read-only link** from [AoC Leaderboards](https://adventofcode.com/leaderboard/private)
+2. Create a **Discord webhook** in your server (Server Settings → Integrations → Webhooks)
+3. Visit [adventcord.liam.so](https://adventcord.liam.so) and fill out the form
+4. Done! You'll receive updates at your scheduled times
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Self-Hosting
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### Prerequisites
 
-## Deploy on Vercel
+- [Bun](https://bun.sh) runtime
+- [Turso](https://turso.tech) database (or any libSQL-compatible database)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Clone the repository
+git clone https://github.com/Lermatroid/adventcord.git
+cd adventcord
+
+# Install dependencies
+bun install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your Turso credentials
+
+# Push database schema
+bun run db:push
+
+# Start development server
+bun run dev
+```
+
+#### Environment Variables
+
+```env
+TURSO_DATABASE_URL=libsql://your-database.turso.io
+TURSO_AUTH_TOKEN=your-auth-token
+```
+
+## 🏗️ Architecture
+
+| Component | Platform | Description |
+|-----------|----------|-------------|
+| Web App | Vercel | Next.js 15 frontend for managing subscriptions |
+| Cron Job | Railway | Hourly job that sends webhook notifications |
+| Database | Turso | SQLite database for storing subscriptions |
+
+## 📦 Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Runtime**: Bun
+- **Database**: Turso (libSQL) + Drizzle ORM
+- **Styling**: Tailwind CSS v4
+- **HTTP Client**: @better-fetch/fetch
+
+## 🛠️ Development
+
+```bash
+# Run development server
+bun run dev
+
+# Run database studio
+bun run db:studio
+
+# Generate database migrations
+bun run db:generate
+
+# Run cron job manually
+bun run cron --help
+```
+
+### Cron Debug Commands
+
+```bash
+# Test with a specific webhook (from DB)
+bun run cron --webhook-url "https://discord.com/api/webhooks/..."
+
+# Dry run (no webhooks sent)
+bun run cron --dry-run --force-aoc --day 1
+
+# Test directly without DB
+bun run cron --test-url "https://discord.com/api/webhooks/..." --test-leaderboard "https://adventofcode.com/..."
+```
+
+## 🚢 Deployment
+
+### Vercel (Web App)
+
+1. Connect your GitHub repository to Vercel
+2. Add environment variables (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
+3. Deploy
+
+### Railway (Cron Job)
+
+1. Create a new project and connect your repository
+2. Add environment variables
+3. Set up a cron job: `0 * * * *` (every hour on the hour)
+4. Command: `bun run cron`
+
+## 📄 License
+
+MIT
+
+## 🙏 Acknowledgments
+
+- [Advent of Code](https://adventofcode.com) by Eric Wastl
+- Inspired by the AoC terminal aesthetic
+
+---
+
+<p align="center">
+  <sub>Not affiliated with Advent of Code. Please support AoC by purchasing <a href="https://adventofcode.com/support">AoC++</a>!</sub>
+</p>

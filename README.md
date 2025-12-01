@@ -36,8 +36,8 @@ cd adventcord
 # Install dependencies
 bun install
 
-# Set up environment variables
-cp .env.example .env
+# Create env file
+touch .env
 # Edit .env with your Turso credentials
 
 # Push database schema

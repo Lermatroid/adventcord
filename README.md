@@ -64,7 +64,7 @@ TURSO_AUTH_TOKEN=your-auth-token
 
 ## 📦 Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 15
 - **Runtime**: Bun
 - **Database**: Turso (libSQL) + Drizzle ORM
 - **Styling**: Tailwind CSS v4

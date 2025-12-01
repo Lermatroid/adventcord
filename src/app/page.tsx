@@ -108,8 +108,8 @@ export default function Home() {
         Adventcord is not affiliated with Advent of Code.
         <br />
         <br />
-        Made with ❤️ and {"</>"} by{" "}
-        <Link href="https://liam.so/links">Liam</Link>
+        Made with ❤️ and {"</>"} by Liam Murray (
+        <Link href="https://liam.so/links">@Lermatroid</Link>)
       </p>
     </div>
   );

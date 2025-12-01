@@ -1,15 +1,6 @@
 # 🎄 Adventcord
 
-Discord webhook notifications for your [Advent of Code](https://adventofcode.com) private leaderboards.
-
-```
-    *        .  *    .   *       .      *    .  
- .    *  .    _____   _             _                  _   
-    .    *   |  _  |_| |_ _ ___ ___| |_ ___ ___ ___ _| |  
-  *    .   * |     | . | | | -_|   |  _|  _| . |  _| . |  
-.   *     .  |__|__|___|\_/|___|_|_|_| |___|___|_| |___|  
-    .  *    .        *    .    *      .     *   .    
-```
+Discord webhook notifications for [Advent of Code](https://adventofcode.com) leaderboards and new puzzle announcements.
 
 ## ✨ Features
 
@@ -65,11 +56,11 @@ TURSO_AUTH_TOKEN=your-auth-token
 
 ## 🏗️ Architecture
 
-| Component | Platform | Description |
-|-----------|----------|-------------|
-| Web App | Vercel | Next.js 15 frontend for managing subscriptions |
-| Cron Job | Railway | Hourly job that sends webhook notifications |
-| Database | Turso | SQLite database for storing subscriptions |
+| Component | Platform | Description                                    |
+| --------- | -------- | ---------------------------------------------- |
+| Web App   | Vercel   | Next.js 15 frontend for managing subscriptions |
+| Cron Job  | Railway  | Hourly job that sends webhook notifications    |
+| Database  | Turso    | SQLite database for storing subscriptions      |
 
 ## 📦 Tech Stack
 

@@ -1,0 +1,46 @@
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+
+export const webhooks = sqliteTable(
+  "webhooks",
+  {
+    id: text("id").primaryKey(),
+    discordWebhookUrl: text("discord_webhook_url").notNull().unique(),
+    roleId: text("role_id"),
+    hours: text("hours").notNull(), // JSON array e.g., "[6, 12, 18]"
+    leaderboardUrl: text("leaderboard_url").notNull(),
+    puzzleNotificationHour: integer("puzzle_notification_hour"), // null = disabled, 0-23 for hour (EST)
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [index("webhook_url_idx").on(table.discordWebhookUrl)]
+);
+
+export const leaderboardCache = sqliteTable(
+  "leaderboard_cache",
+  {
+    id: text("id").primaryKey(),
+    viewKey: text("view_key").notNull().unique(),
+    data: text("data").notNull(), // JSON leaderboard response
+    fetchedAt: integer("fetched_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [index("view_key_idx").on(table.viewKey)]
+);
+
+export const logs = sqliteTable("logs", {
+  id: text("id").primaryKey(),
+  webhookId: text("webhook_id").references(() => webhooks.id, {
+    onDelete: "cascade",
+  }),
+  type: text("type").notNull(), // "success", "error", "webhook_deleted"
+  message: text("message").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// Type exports
+export type Webhook = typeof webhooks.$inferSelect;
+export type NewWebhook = typeof webhooks.$inferInsert;
+export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
+export type NewLeaderboardCache = typeof leaderboardCache.$inferInsert;
+export type Log = typeof logs.$inferSelect;
+export type NewLog = typeof logs.$inferInsert;
+

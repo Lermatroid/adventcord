@@ -88,7 +88,8 @@ export async function sendSlackWebhook(
  */
 export function formatLeaderboardSlackMessage(
   leaderboard: AocLeaderboard,
-  pingChannel?: boolean
+  pingChannel?: boolean,
+  joinCode?: string | null
 ): SlackWebhookPayload {
   const sorted = sortLeaderboard(leaderboard);
   const topMembers = sorted.slice(0, 15); // Show top 15
@@ -103,6 +104,25 @@ export function formatLeaderboardSlackMessage(
 
   const totalParticipants = Object.keys(leaderboard.members).length;
   const activeParticipants = sorted.length;
+
+  const contextElements: SlackBlock["elements"] = [
+    {
+      type: "mrkdwn",
+      text: `📊 ${activeParticipants} active / ${totalParticipants} total participants`,
+    },
+  ];
+
+  if (joinCode) {
+    contextElements.push({
+      type: "mrkdwn",
+      text: `🔗 Join code: \`${joinCode}\``,
+    });
+  }
+
+  contextElements.push({
+    type: "mrkdwn",
+    text: `Updated: <!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toISOString()}>`,
+  });
 
   const blocks: SlackBlock[] = [
     {
@@ -122,16 +142,7 @@ export function formatLeaderboardSlackMessage(
     },
     {
       type: "context",
-      elements: [
-        {
-          type: "mrkdwn",
-          text: `📊 ${activeParticipants} active / ${totalParticipants} total participants`,
-        },
-        {
-          type: "mrkdwn",
-          text: `Updated: <!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toISOString()}>`,
-        },
-      ],
+      elements: contextElements,
     },
   ];
 

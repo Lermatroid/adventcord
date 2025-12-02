@@ -133,7 +133,9 @@ export function validateSlackWebhookUrl(url: string): {
     }
 
     // Check path format: /services/T.../B.../...
-    const pathMatch = parsed.pathname.match(/^\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[A-Za-z0-9]+$/);
+    const pathMatch = parsed.pathname.match(
+      /^\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[A-Za-z0-9]+$/
+    );
     if (!pathMatch) {
       return {
         valid: false,
@@ -197,26 +199,31 @@ export function validateDiscordRoleId(roleId: string): {
 
 // Zod schemas for API validation
 export const webhookCreateSchema = z.object({
-  webhookUrl: z.string().url().refine(
-    (url) => validateWebhookUrl(url).valid,
-    { message: "Invalid webhook URL (must be Discord or Slack)" }
-  ),
+  webhookUrl: z
+    .string()
+    .url()
+    .refine((url) => validateWebhookUrl(url).valid, {
+      message: "Invalid webhook URL (must be Discord or Slack)",
+    }),
   type: z.enum(["discord", "slack"]),
   roleId: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || validateDiscordRoleId(val).valid,
-      { message: "Invalid Discord role ID" }
-    ),
+    .refine((val) => !val || validateDiscordRoleId(val).valid, {
+      message: "Invalid Discord role ID",
+    }),
   pingChannel: z.boolean().optional(),
-  hours: z
-    .array(z.number().min(0).max(23))
-    .min(1, "Select at least one hour"),
-  leaderboardUrl: z.string().url().refine(
-    (url) => validateLeaderboardUrl(url).valid,
-    { message: "Invalid AoC leaderboard URL or missing view_key" }
-  ),
+  hours: z.array(z.number().min(0).max(23)).min(1, "Select at least one hour"),
+  leaderboardUrl: z
+    .string()
+    .url()
+    .refine((url) => validateLeaderboardUrl(url).valid, {
+      message: "Invalid AoC leaderboard URL or missing view_key",
+    }),
+  joinCode: z
+    .string()
+    .optional()
+    .transform((val) => val?.trim() || null), // Empty string becomes null
   puzzleNotificationHour: z
     .number()
     .min(-1)
@@ -229,4 +236,3 @@ export const webhookUpdateSchema = webhookCreateSchema.partial();
 
 export type WebhookCreateInput = z.infer<typeof webhookCreateSchema>;
 export type WebhookUpdateInput = z.infer<typeof webhookUpdateSchema>;
-

@@ -81,7 +81,8 @@ export async function sendDiscordWebhook(
  */
 export function formatLeaderboardEmbed(
   leaderboard: AocLeaderboard,
-  roleId?: string | null
+  roleId?: string | null,
+  joinCode?: string | null
 ): DiscordWebhookPayload {
   const sorted = sortLeaderboard(leaderboard);
   const topMembers = sorted.slice(0, 15); // Show top 15
@@ -97,17 +98,27 @@ export function formatLeaderboardEmbed(
   const totalParticipants = Object.keys(leaderboard.members).length;
   const activeParticipants = sorted.length;
 
+  const fields: DiscordEmbed["fields"] = [
+    {
+      name: "📊 Stats",
+      value: `${activeParticipants} active / ${totalParticipants} total participants`,
+      inline: true,
+    },
+  ];
+
+  if (joinCode) {
+    fields.push({
+      name: "🔗 Join Code",
+      value: `\`${joinCode}\``,
+      inline: true,
+    });
+  }
+
   const embed: DiscordEmbed = {
     title: `🎄 Advent of Code ${leaderboard.event} Leaderboard`,
     description: leaderboardText || "No participants with stars yet!",
     color: 0x0f9d58, // Green color
-    fields: [
-      {
-        name: "📊 Stats",
-        value: `${activeParticipants} active / ${totalParticipants} total participants`,
-        inline: true,
-      },
-    ],
+    fields,
     footer: {
       text: "Updated",
     },

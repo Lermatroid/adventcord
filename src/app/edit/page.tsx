@@ -38,6 +38,7 @@ interface WebhookData {
   pingChannel: boolean | null;
   hours: number[];
   leaderboardUrl: string;
+  joinCode: string | null;
   puzzleNotificationHour: number | null;
 }
 
@@ -56,6 +57,7 @@ export default function EditPage() {
     pingChannel: false,
     hours: [] as number[],
     leaderboardUrl: "",
+    joinCode: "",
     puzzleNotificationHour: 0 as number,
   });
 
@@ -86,6 +88,7 @@ export default function EditPage() {
         pingChannel: data.pingChannel || false,
         hours: data.hours,
         leaderboardUrl: data.leaderboardUrl,
+        joinCode: data.joinCode || "",
         puzzleNotificationHour: data.puzzleNotificationHour ?? 0,
       });
     } catch (err) {
@@ -120,6 +123,7 @@ export default function EditPage() {
           pingChannel: webhookData.type === "slack" ? formData.pingChannel : undefined,
           hours: formData.hours,
           leaderboardUrl: formData.leaderboardUrl,
+          joinCode: formData.joinCode || undefined,
           puzzleNotificationHour: formData.puzzleNotificationHour,
         }),
       });
@@ -304,6 +308,39 @@ export default function EditPage() {
               placeholder="https://adventofcode.com/2025/leaderboard/private/view/123?view_key=..."
               className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
             />
+            {formData.leaderboardUrl && (
+              <p className="text-xs">
+                <a
+                  href={formData.leaderboardUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-green hover:text-link-hover"
+                >
+                  [View Leaderboard ↗]
+                </a>
+              </p>
+            )}
+          </div>
+
+          {/* Join Code */}
+          <div className="space-y-2">
+            <label className="block text-silver">
+              Join Code{" "}
+              <span className="text-foreground/50">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={formData.joinCode}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, joinCode: e.target.value }))
+              }
+              placeholder="e.g., 123456-abcdef"
+              className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
+            />
+            <p className="text-xs text-foreground/50">
+              If provided, the join code will be included in leaderboard messages
+              so others can easily join your private leaderboard
+            </p>
           </div>
 
           {/* Puzzle Notification */}

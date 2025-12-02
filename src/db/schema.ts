@@ -12,6 +12,7 @@ export const webhooks = sqliteTable(
     pingChannel: integer("ping_channel", { mode: "boolean" }), // Slack only: whether to use <!channel>
     hours: text("hours").notNull(), // JSON array e.g., "[6, 12, 18]"
     leaderboardUrl: text("leaderboard_url").notNull(),
+    joinCode: text("join_code"), // Optional: join code to include in messages
     puzzleNotificationHour: integer("puzzle_notification_hour"), // null = disabled, 0-23 for hour (EST)
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),

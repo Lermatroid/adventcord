@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       pingChannel: webhook.pingChannel,
       hours: JSON.parse(webhook.hours),
       leaderboardUrl: webhook.leaderboardUrl,
+      joinCode: webhook.joinCode,
       puzzleNotificationHour: webhook.puzzleNotificationHour,
       createdAt: webhook.createdAt,
       updatedAt: webhook.updatedAt,

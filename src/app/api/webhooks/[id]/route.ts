@@ -33,6 +33,7 @@ export async function GET(
       pingChannel: webhook.pingChannel,
       hours: JSON.parse(webhook.hours),
       leaderboardUrl: webhook.leaderboardUrl,
+      joinCode: webhook.joinCode,
       puzzleNotificationHour: webhook.puzzleNotificationHour,
       createdAt: webhook.createdAt,
       updatedAt: webhook.updatedAt,
@@ -97,6 +98,9 @@ export async function PUT(
     }
     if (result.data.leaderboardUrl !== undefined) {
       updates.leaderboardUrl = result.data.leaderboardUrl;
+    }
+    if (result.data.joinCode !== undefined) {
+      updates.joinCode = result.data.joinCode;
     }
     if (result.data.puzzleNotificationHour !== undefined) {
       updates.puzzleNotificationHour = result.data.puzzleNotificationHour;

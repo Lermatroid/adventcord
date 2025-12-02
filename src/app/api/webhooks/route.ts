@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { webhookUrl, type, roleId, pingChannel, hours, leaderboardUrl, puzzleNotificationHour } = result.data;
+    const { webhookUrl, type, roleId, pingChannel, hours, leaderboardUrl, joinCode, puzzleNotificationHour } = result.data;
 
     // Check if webhook already exists
     const existing = await db.query.webhooks.findFirst({
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       pingChannel: type === "slack" ? (pingChannel || false) : null,
       hours: JSON.stringify(hours),
       leaderboardUrl,
+      joinCode: joinCode || null,
       puzzleNotificationHour: puzzleNotificationHour ?? 0, // Default to midnight EST
       createdAt: now,
       updatedAt: now,

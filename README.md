@@ -58,13 +58,13 @@ TURSO_AUTH_TOKEN=your-auth-token
 
 | Component | Platform | Description                                    |
 | --------- | -------- | ---------------------------------------------- |
-| Web App   | Vercel   | Next.js 15 frontend for managing subscriptions |
+| Web App   | Vercel   | Next.js 16 frontend for managing subscriptions |
 | Cron Job  | Railway  | Hourly job that sends webhook notifications    |
 | Database  | Turso    | SQLite database for storing subscriptions      |
 
 ## 📦 Tech Stack
 
-- **Framework**: Next.js 15
+- **Framework**: Next.js 16
 - **Runtime**: Bun
 - **Database**: Turso (libSQL) + Drizzle ORM
 - **Styling**: Tailwind CSS v4

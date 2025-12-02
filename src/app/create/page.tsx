@@ -42,6 +42,7 @@ export default function CreatePage() {
     pingChannel: false,
     hours: [] as number[],
     leaderboardUrl: "",
+    joinCode: "",
     puzzleNotificationHour: 0, // Default to midnight (release time)
   });
 
@@ -81,6 +82,7 @@ export default function CreatePage() {
           pingChannel: webhookType === "slack" ? formData.pingChannel : undefined,
           hours: formData.hours,
           leaderboardUrl: formData.leaderboardUrl,
+          joinCode: formData.joinCode || undefined,
           puzzleNotificationHour: formData.puzzleNotificationHour,
         }),
       });
@@ -246,6 +248,27 @@ export default function CreatePage() {
           <p className="text-xs text-foreground/50">
             Must include the <span className="text-green">view_key</span>{" "}
             parameter
+          </p>
+        </div>
+
+        {/* Join Code */}
+        <div className="space-y-2">
+          <label className="block text-silver">
+            Join Code{" "}
+            <span className="text-foreground/50">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={formData.joinCode}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, joinCode: e.target.value }))
+            }
+            placeholder="e.g., 123456-abcdef"
+            className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
+          />
+          <p className="text-xs text-foreground/50">
+            If provided, the join code will be included in leaderboard messages
+            so others can easily join your private leaderboard
           </p>
         </div>
 

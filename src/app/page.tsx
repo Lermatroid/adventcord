@@ -82,8 +82,8 @@ export default function Home() {
             Copy the webhook URL.
           </p>
           <p className="text-foreground/80">
-            In Slack: Apps → Incoming Webhooks → New Webhook. Copy the webhook
-            URL.
+            In Slack: Apps → Create New App → Incoming Webhooks → New Webhook.
+            Copy the webhook URL.
           </p>
         </div>
 

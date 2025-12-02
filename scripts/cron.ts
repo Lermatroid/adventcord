@@ -36,7 +36,10 @@ import {
   formatLeaderboardSlackMessage,
   formatPuzzleNotificationSlackMessage,
 } from "../src/lib/slack";
-import { validateLeaderboardUrl, detectWebhookType } from "../src/lib/validation";
+import {
+  validateLeaderboardUrl,
+  detectWebhookType,
+} from "../src/lib/validation";
 
 // Parse CLI arguments
 function parseArgs(): {
@@ -266,9 +269,15 @@ async function sendWebhook(
   payload: unknown
 ): Promise<SendWebhookResult> {
   if (type === "slack") {
-    return sendSlackWebhook(webhookUrl, payload as Parameters<typeof sendSlackWebhook>[1]);
+    return sendSlackWebhook(
+      webhookUrl,
+      payload as Parameters<typeof sendSlackWebhook>[1]
+    );
   }
-  return sendDiscordWebhook(webhookUrl, payload as Parameters<typeof sendDiscordWebhook>[1]);
+  return sendDiscordWebhook(
+    webhookUrl,
+    payload as Parameters<typeof sendDiscordWebhook>[1]
+  );
 }
 
 /**
@@ -295,12 +304,19 @@ async function sendPuzzleNotifications(
   console.log(`Sending to ${puzzleWebhooks.length} webhook(s)...\n`);
 
   for (const webhook of puzzleWebhooks) {
-    console.log(`  Sending puzzle notification to ${webhook.id} (${webhook.type})...`);
+    console.log(
+      `  Sending puzzle notification to ${webhook.id} (${webhook.type})...`
+    );
 
     // Format payload based on webhook type
-    const payload = webhook.type === "slack"
-      ? formatPuzzleNotificationSlackMessage(day, year, webhook.pingChannel ?? false)
-      : formatPuzzleNotificationEmbed(day, year, webhook.roleId);
+    const payload =
+      webhook.type === "slack"
+        ? formatPuzzleNotificationSlackMessage(
+            day,
+            year,
+            webhook.pingChannel ?? false
+          )
+        : formatPuzzleNotificationEmbed(day, year, webhook.roleId);
 
     // Dry run mode - don't actually send
     if (cliArgs.dryRun) {
@@ -319,7 +335,9 @@ async function sendPuzzleNotifications(
         await createLog(
           webhook.id,
           "webhook_deleted",
-          `Webhook was deleted from ${webhook.type === "slack" ? "Slack" : "Discord"}`
+          `Webhook was deleted from ${
+            webhook.type === "slack" ? "Slack" : "Discord"
+          }`
         );
       }
       stats.deleted++;
@@ -358,7 +376,9 @@ async function runTestMode(webhookUrl: string, leaderboardUrl?: string) {
 
   const webhookType = detectWebhookType(webhookUrl);
   if (!webhookType) {
-    console.error("Unrecognized webhook URL format. Must be Discord or Slack webhook URL.");
+    console.error(
+      "Unrecognized webhook URL format. Must be Discord or Slack webhook URL."
+    );
     process.exit(1);
   }
 
@@ -381,16 +401,21 @@ async function runTestMode(webhookUrl: string, leaderboardUrl?: string) {
       } members\n`
     );
 
-    const payload = webhookType === "slack"
-      ? formatLeaderboardSlackMessage(leaderboard, false)
-      : formatLeaderboardEmbed(leaderboard, null);
+    const payload =
+      webhookType === "slack"
+        ? formatLeaderboardSlackMessage(leaderboard, false)
+        : formatLeaderboardEmbed(leaderboard, null);
 
     console.log("Sending leaderboard update...");
 
     const sendResult = await sendWebhook(webhookUrl, webhookType, payload);
 
     if (sendResult.success) {
-      console.log(`Success! Check your ${webhookType === "slack" ? "Slack" : "Discord"} channel.`);
+      console.log(
+        `Success! Check your ${
+          webhookType === "slack" ? "Slack" : "Discord"
+        } channel.`
+      );
     } else {
       console.error(`Error: ${sendResult.error}`);
       if (sendResult.webhookDeleted) {
@@ -443,7 +468,11 @@ async function runTestMode(webhookUrl: string, leaderboardUrl?: string) {
     const sendResult = await sendWebhook(webhookUrl, webhookType, payload);
 
     if (sendResult.success) {
-      console.log(`Success! Check your ${webhookType === "slack" ? "Slack" : "Discord"} channel.`);
+      console.log(
+        `Success! Check your ${
+          webhookType === "slack" ? "Slack" : "Discord"
+        } channel.`
+      );
     } else {
       console.error(`Error: ${sendResult.error}`);
       if (sendResult.webhookDeleted) {
@@ -628,9 +657,18 @@ async function main() {
       console.log(`  Sending to webhook ${webhook.id} (${webhook.type})...`);
 
       // Format payload based on webhook type
-      const payload = webhook.type === "slack"
-        ? formatLeaderboardSlackMessage(leaderboard, webhook.pingChannel ?? false)
-        : formatLeaderboardEmbed(leaderboard, webhook.roleId);
+      const payload =
+        webhook.type === "slack"
+          ? formatLeaderboardSlackMessage(
+              leaderboard,
+              webhook.pingChannel ?? false,
+              webhook.joinCode
+            )
+          : formatLeaderboardEmbed(
+              leaderboard,
+              webhook.roleId,
+              webhook.joinCode
+            );
 
       // Dry run mode - don't actually send
       if (cliArgs.dryRun) {
@@ -640,7 +678,11 @@ async function main() {
         continue;
       }
 
-      const result = await sendWebhook(webhook.webhookUrl, webhook.type, payload);
+      const result = await sendWebhook(
+        webhook.webhookUrl,
+        webhook.type,
+        payload
+      );
 
       if (result.webhookDeleted) {
         console.log(`    Webhook deleted - removing from database`);
@@ -649,7 +691,9 @@ async function main() {
           await createLog(
             webhook.id,
             "webhook_deleted",
-            `Webhook was deleted from ${webhook.type === "slack" ? "Slack" : "Discord"}`
+            `Webhook was deleted from ${
+              webhook.type === "slack" ? "Slack" : "Discord"
+            }`
           );
         }
         deletedCount++;

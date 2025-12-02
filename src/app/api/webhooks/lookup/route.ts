@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, webhooks } from "@/db";
 import { eq } from "drizzle-orm";
-import { validateDiscordWebhookUrl } from "@/lib/validation";
+import { validateWebhookUrl } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const webhookUrl = searchParams.get("url");
+    const url = searchParams.get("url");
 
-    if (!webhookUrl) {
+    if (!url) {
       return NextResponse.json(
         { error: "Missing webhook URL parameter" },
         { status: 400 }
       );
     }
 
-    // Validate URL format
-    const validation = validateDiscordWebhookUrl(webhookUrl);
+    // Validate URL format (supports both Discord and Slack)
+    const validation = validateWebhookUrl(url);
     if (!validation.valid) {
       return NextResponse.json(
         { error: validation.error },
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Look up webhook
     const webhook = await db.query.webhooks.findFirst({
-      where: eq(webhooks.discordWebhookUrl, webhookUrl),
+      where: eq(webhooks.webhookUrl, url),
     });
 
     if (!webhook) {
@@ -38,8 +38,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       id: webhook.id,
-      discordWebhookUrl: webhook.discordWebhookUrl,
+      webhookUrl: webhook.webhookUrl,
+      type: webhook.type,
       roleId: webhook.roleId,
+      pingChannel: webhook.pingChannel,
       hours: JSON.parse(webhook.hours),
       leaderboardUrl: webhook.leaderboardUrl,
       puzzleNotificationHour: webhook.puzzleNotificationHour,
@@ -54,4 +56,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

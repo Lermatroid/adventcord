@@ -1,5 +1,5 @@
 /**
- * Cron script for sending AoC leaderboard updates to Discord webhooks.
+ * Cron script for sending AoC leaderboard updates to Discord and Slack webhooks.
  * Run with: bun run scripts/cron.ts
  * Configure Railway to run this at minute 0 of every hour: 0 * * * *
  *
@@ -17,9 +17,11 @@
  *   bun run cron --dry-run --hour 0 --force-aoc --day 1
  *   bun run cron --webhook-id abc123 --dry-run
  *   bun run cron --test-url https://discord.com/api/webhooks/... --test-leaderboard https://adventofcode.com/...
+ *   bun run cron --test-url https://hooks.slack.com/services/... --test-leaderboard https://adventofcode.com/...
  */
 
 import { db, webhooks, leaderboardCache, logs } from "../src/db";
+import type { WebhookType } from "../src/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { fetchLeaderboard, type AocLeaderboard } from "../src/lib/aoc";
@@ -27,8 +29,14 @@ import {
   sendDiscordWebhook,
   formatLeaderboardEmbed,
   formatPuzzleNotificationEmbed,
+  type SendWebhookResult,
 } from "../src/lib/discord";
-import { validateLeaderboardUrl } from "../src/lib/validation";
+import {
+  sendSlackWebhook,
+  formatLeaderboardSlackMessage,
+  formatPuzzleNotificationSlackMessage,
+} from "../src/lib/slack";
+import { validateLeaderboardUrl, detectWebhookType } from "../src/lib/validation";
 
 // Parse CLI arguments
 function parseArgs(): {
@@ -104,7 +112,7 @@ Options:
   --dry-run               Don't send webhooks, just log what would happen
   --force-aoc             Force AoC season (Dec 1-25) even outside December
   --webhook-id <id>       Only process a specific webhook (by DB id)
-  --webhook-url <url>     Only process a specific webhook (by Discord URL)
+  --webhook-url <url>     Only process a specific webhook (by webhook URL)
   --skip-cache            Ignore cache and fetch fresh leaderboard data
   --test-url <url>        Send directly to a webhook URL (bypasses DB)
   --test-leaderboard <url> Leaderboard URL to use with --test-url
@@ -114,6 +122,7 @@ Examples:
   bun run cron --dry-run --hour 0 --force-aoc --day 1
   bun run cron --webhook-id abc123 --dry-run
   bun run cron --test-url https://discord.com/api/webhooks/... --test-leaderboard https://adventofcode.com/...
+  bun run cron --test-url https://hooks.slack.com/services/... --test-leaderboard https://adventofcode.com/...
         `);
         process.exit(0);
     }
@@ -249,6 +258,20 @@ async function getLeaderboard(
 }
 
 /**
+ * Sends a webhook message using the appropriate service based on webhook type
+ */
+async function sendWebhook(
+  webhookUrl: string,
+  type: WebhookType,
+  payload: unknown
+): Promise<SendWebhookResult> {
+  if (type === "slack") {
+    return sendSlackWebhook(webhookUrl, payload as Parameters<typeof sendSlackWebhook>[1]);
+  }
+  return sendDiscordWebhook(webhookUrl, payload as Parameters<typeof sendDiscordWebhook>[1]);
+}
+
+/**
  * Send puzzle notifications to webhooks scheduled for this hour
  */
 async function sendPuzzleNotifications(
@@ -272,19 +295,22 @@ async function sendPuzzleNotifications(
   console.log(`Sending to ${puzzleWebhooks.length} webhook(s)...\n`);
 
   for (const webhook of puzzleWebhooks) {
-    console.log(`  Sending puzzle notification to ${webhook.id}...`);
+    console.log(`  Sending puzzle notification to ${webhook.id} (${webhook.type})...`);
 
-    const payload = formatPuzzleNotificationEmbed(day, year, webhook.roleId);
+    // Format payload based on webhook type
+    const payload = webhook.type === "slack"
+      ? formatPuzzleNotificationSlackMessage(day, year, webhook.pingChannel ?? false)
+      : formatPuzzleNotificationEmbed(day, year, webhook.roleId);
 
     // Dry run mode - don't actually send
     if (cliArgs.dryRun) {
       console.log(`    [DRY RUN] Would send puzzle notification`);
-      console.log(`    Payload: ${JSON.stringify(payload.embeds?.[0]?.title)}`);
+      console.log(`    Type: ${webhook.type}`);
       stats.success++;
       continue;
     }
 
-    const result = await sendDiscordWebhook(webhook.discordWebhookUrl, payload);
+    const result = await sendWebhook(webhook.webhookUrl, webhook.type, payload);
 
     if (result.webhookDeleted) {
       console.log(`    Webhook deleted - removing from database`);
@@ -293,7 +319,7 @@ async function sendPuzzleNotifications(
         await createLog(
           webhook.id,
           "webhook_deleted",
-          "Webhook was deleted from Discord"
+          `Webhook was deleted from ${webhook.type === "slack" ? "Slack" : "Discord"}`
         );
       }
       stats.deleted++;
@@ -330,7 +356,14 @@ async function runTestMode(webhookUrl: string, leaderboardUrl?: string) {
   console.log("Adventcord - TEST MODE");
   console.log("========================================\n");
 
-  console.log(`Webhook URL: ${webhookUrl}\n`);
+  const webhookType = detectWebhookType(webhookUrl);
+  if (!webhookType) {
+    console.error("Unrecognized webhook URL format. Must be Discord or Slack webhook URL.");
+    process.exit(1);
+  }
+
+  console.log(`Webhook URL: ${webhookUrl}`);
+  console.log(`Detected type: ${webhookType}\n`);
 
   if (leaderboardUrl) {
     console.log(`Fetching leaderboard: ${leaderboardUrl}...`);
@@ -348,13 +381,16 @@ async function runTestMode(webhookUrl: string, leaderboardUrl?: string) {
       } members\n`
     );
 
-    const payload = formatLeaderboardEmbed(leaderboard, null);
+    const payload = webhookType === "slack"
+      ? formatLeaderboardSlackMessage(leaderboard, false)
+      : formatLeaderboardEmbed(leaderboard, null);
+
     console.log("Sending leaderboard update...");
 
-    const sendResult = await sendDiscordWebhook(webhookUrl, payload);
+    const sendResult = await sendWebhook(webhookUrl, webhookType, payload);
 
     if (sendResult.success) {
-      console.log("Success! Check your Discord channel.");
+      console.log(`Success! Check your ${webhookType === "slack" ? "Slack" : "Discord"} channel.`);
     } else {
       console.error(`Error: ${sendResult.error}`);
       if (sendResult.webhookDeleted) {
@@ -365,23 +401,49 @@ async function runTestMode(webhookUrl: string, leaderboardUrl?: string) {
     // Send a simple test message
     console.log("No leaderboard URL provided, sending test message...\n");
 
-    const payload = {
-      embeds: [
-        {
-          title: "🎄 Adventcord - Test Message",
-          description:
-            "Your webhook is working! If you provide a `--test-leaderboard` URL, you'll see actual leaderboard data.",
-          color: 0x0f9d58,
-          timestamp: new Date().toISOString(),
-        },
-      ],
-      username: "Adventcord",
-    };
+    let payload: unknown;
+    if (webhookType === "slack") {
+      payload = {
+        text: "Adventcord - Test Message",
+        blocks: [
+          {
+            type: "header",
+            text: {
+              type: "plain_text",
+              text: "🎄 Adventcord - Test Message",
+              emoji: true,
+            },
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "Your webhook is working! If you provide a `--test-leaderboard` URL, you'll see actual leaderboard data.",
+            },
+          },
+        ],
+        username: "Adventcord",
+        icon_emoji: ":christmas_tree:",
+      };
+    } else {
+      payload = {
+        embeds: [
+          {
+            title: "🎄 Adventcord - Test Message",
+            description:
+              "Your webhook is working! If you provide a `--test-leaderboard` URL, you'll see actual leaderboard data.",
+            color: 0x0f9d58,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        username: "Adventcord",
+      };
+    }
 
-    const sendResult = await sendDiscordWebhook(webhookUrl, payload);
+    const sendResult = await sendWebhook(webhookUrl, webhookType, payload);
 
     if (sendResult.success) {
-      console.log("Success! Check your Discord channel.");
+      console.log(`Success! Check your ${webhookType === "slack" ? "Slack" : "Discord"} channel.`);
     } else {
       console.error(`Error: ${sendResult.error}`);
       if (sendResult.webhookDeleted) {
@@ -453,7 +515,7 @@ async function main() {
 
   if (cliArgs.webhookUrl) {
     allWebhooks = allWebhooks.filter(
-      (w) => w.discordWebhookUrl === cliArgs.webhookUrl
+      (w) => w.webhookUrl === cliArgs.webhookUrl
     );
     if (allWebhooks.length === 0) {
       console.log(`No webhook found with URL: ${cliArgs.webhookUrl}`);
@@ -563,24 +625,22 @@ async function main() {
 
     // Send to each webhook
     for (const webhook of webhooksForLeaderboard) {
-      console.log(`  Sending to webhook ${webhook.id}...`);
+      console.log(`  Sending to webhook ${webhook.id} (${webhook.type})...`);
 
-      const payload = formatLeaderboardEmbed(leaderboard, webhook.roleId);
+      // Format payload based on webhook type
+      const payload = webhook.type === "slack"
+        ? formatLeaderboardSlackMessage(leaderboard, webhook.pingChannel ?? false)
+        : formatLeaderboardEmbed(leaderboard, webhook.roleId);
 
       // Dry run mode - don't actually send
       if (cliArgs.dryRun) {
         console.log(`    [DRY RUN] Would send leaderboard update`);
-        console.log(
-          `    Payload: ${JSON.stringify(payload.embeds?.[0]?.title)}`
-        );
+        console.log(`    Type: ${webhook.type}`);
         successCount++;
         continue;
       }
 
-      const result = await sendDiscordWebhook(
-        webhook.discordWebhookUrl,
-        payload
-      );
+      const result = await sendWebhook(webhook.webhookUrl, webhook.type, payload);
 
       if (result.webhookDeleted) {
         console.log(`    Webhook deleted - removing from database`);
@@ -589,7 +649,7 @@ async function main() {
           await createLog(
             webhook.id,
             "webhook_deleted",
-            "Webhook was deleted from Discord"
+            `Webhook was deleted from ${webhook.type === "slack" ? "Slack" : "Discord"}`
           );
         }
         deletedCount++;

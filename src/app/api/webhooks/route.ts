@@ -17,11 +17,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { discordWebhookUrl, roleId, hours, leaderboardUrl, puzzleNotificationHour } = result.data;
+    const { webhookUrl, type, roleId, pingChannel, hours, leaderboardUrl, puzzleNotificationHour } = result.data;
 
     // Check if webhook already exists
     const existing = await db.query.webhooks.findFirst({
-      where: eq(webhooks.discordWebhookUrl, discordWebhookUrl),
+      where: eq(webhooks.webhookUrl, webhookUrl),
     });
 
     if (existing) {
@@ -35,8 +35,10 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const newWebhook = {
       id: nanoid(),
-      discordWebhookUrl,
-      roleId: roleId || null,
+      webhookUrl,
+      type,
+      roleId: type === "discord" ? (roleId || null) : null,
+      pingChannel: type === "slack" ? (pingChannel || false) : null,
       hours: JSON.stringify(hours),
       leaderboardUrl,
       puzzleNotificationHour: puzzleNotificationHour ?? 0, // Default to midnight EST
@@ -61,4 +63,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

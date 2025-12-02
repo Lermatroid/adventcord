@@ -18,7 +18,8 @@ export default function Home() {
 
       <div className="space-y-6">
         <p>
-          Get <span className="text-gold">Discord notifications</span> for your{" "}
+          <span className="text-gold">Discord & Slack notifications</span> for
+          your{" "}
           <a
             href="https://adventofcode.com"
             target="_blank"
@@ -40,7 +41,7 @@ export default function Home() {
             </li>
             <li>
               <span className="text-green">2.</span> Create a{" "}
-              <span className="text-gold">Discord webhook</span> in your server
+              <span className="text-gold">Discord or Slack webhook</span>
             </li>
             <li>
               <span className="text-green">3.</span> Pick which{" "}
@@ -75,10 +76,14 @@ export default function Home() {
         </div>
 
         <div className="space-y-2">
-          <p className="text-silver">--- Creating a Discord webhook ---</p>
+          <p className="text-silver">--- Creating a Webhook ---</p>
           <p className="text-foreground/80">
             In Discord: Server Settings → Integrations → Webhooks → New Webhook.
             Copy the webhook URL.
+          </p>
+          <p className="text-foreground/80">
+            In Slack: Apps → Incoming Webhooks → New Webhook. Copy the webhook
+            URL.
           </p>
         </div>
 

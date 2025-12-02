@@ -27,8 +27,10 @@ export async function GET(
 
     return NextResponse.json({
       id: webhook.id,
-      discordWebhookUrl: webhook.discordWebhookUrl,
+      webhookUrl: webhook.webhookUrl,
+      type: webhook.type,
       roleId: webhook.roleId,
+      pingChannel: webhook.pingChannel,
       hours: JSON.parse(webhook.hours),
       leaderboardUrl: webhook.leaderboardUrl,
       puzzleNotificationHour: webhook.puzzleNotificationHour,
@@ -78,11 +80,17 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
-    if (result.data.discordWebhookUrl !== undefined) {
-      updates.discordWebhookUrl = result.data.discordWebhookUrl;
+    if (result.data.webhookUrl !== undefined) {
+      updates.webhookUrl = result.data.webhookUrl;
+    }
+    if (result.data.type !== undefined) {
+      updates.type = result.data.type;
     }
     if (result.data.roleId !== undefined) {
       updates.roleId = result.data.roleId || null;
+    }
+    if (result.data.pingChannel !== undefined) {
+      updates.pingChannel = result.data.pingChannel;
     }
     if (result.data.hours !== undefined) {
       updates.hours = JSON.stringify(result.data.hours);
@@ -140,4 +148,3 @@ export async function DELETE(
     );
   }
 }
-

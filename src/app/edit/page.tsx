@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+type WebhookType = "discord" | "slack";
 
 function formatHour(hour: number): string {
   if (hour === 0) return "12am";
@@ -12,10 +15,27 @@ function formatHour(hour: number): string {
   return `${hour - 12}pm`;
 }
 
+function detectWebhookType(url: string): WebhookType | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "discord.com" || parsed.hostname === "discordapp.com") {
+      return "discord";
+    }
+    if (parsed.hostname === "hooks.slack.com") {
+      return "slack";
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface WebhookData {
   id: string;
-  discordWebhookUrl: string;
+  webhookUrl: string;
+  type: WebhookType;
   roleId: string | null;
+  pingChannel: boolean | null;
   hours: number[];
   leaderboardUrl: string;
   puzzleNotificationHour: number | null;
@@ -33,10 +53,16 @@ export default function EditPage() {
 
   const [formData, setFormData] = useState({
     roleId: "",
+    pingChannel: false,
     hours: [] as number[],
     leaderboardUrl: "",
     puzzleNotificationHour: 0 as number,
   });
+
+  const lookupWebhookType = useMemo(
+    () => detectWebhookType(lookupUrl),
+    [lookupUrl]
+  );
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +83,7 @@ export default function EditPage() {
       setWebhookData(data);
       setFormData({
         roleId: data.roleId || "",
+        pingChannel: data.pingChannel || false,
         hours: data.hours,
         leaderboardUrl: data.leaderboardUrl,
         puzzleNotificationHour: data.puzzleNotificationHour ?? 0,
@@ -88,7 +115,13 @@ export default function EditPage() {
       const response = await fetch(`/api/webhooks/${webhookData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          roleId: webhookData.type === "discord" ? formData.roleId : undefined,
+          pingChannel: webhookData.type === "slack" ? formData.pingChannel : undefined,
+          hours: formData.hours,
+          leaderboardUrl: formData.leaderboardUrl,
+          puzzleNotificationHour: formData.puzzleNotificationHour,
+        }),
       });
 
       const data = await response.json();
@@ -138,7 +171,7 @@ export default function EditPage() {
       <div>
         <h1 className="text-gold text-lg">--- Edit / View Subscription ---</h1>
         <p className="text-foreground/70 mt-2">
-          Enter your Discord webhook URL to look up and edit your subscription.
+          Enter your webhook URL to look up and edit your subscription.
         </p>
       </div>
 
@@ -158,19 +191,33 @@ export default function EditPage() {
       {!webhookData && (
         <form onSubmit={handleLookup} className="space-y-4">
           <div className="space-y-2">
-            <label className="block text-silver">Discord Webhook URL</label>
+            <label className="block text-silver">Webhook URL</label>
             <input
               type="url"
               required
               value={lookupUrl}
               onChange={(e) => setLookupUrl(e.target.value)}
-              placeholder="https://discord.com/api/webhooks/..."
+              placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/services/..."
               className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
             />
+            <p className="text-xs text-foreground/50">
+              {lookupWebhookType === "discord" && (
+                <span className="text-green">Discord webhook detected</span>
+              )}
+              {lookupWebhookType === "slack" && (
+                <span className="text-green">Slack webhook detected</span>
+              )}
+              {!lookupWebhookType && lookupUrl && (
+                <span className="text-red-400">Unrecognized webhook URL format</span>
+              )}
+              {!lookupUrl && (
+                <>Enter a Discord or Slack webhook URL</>
+              )}
+            </p>
           </div>
           <button
             type="submit"
-            disabled={isLooking}
+            disabled={isLooking || !lookupWebhookType}
             className="border border-green px-4 py-2 hover:bg-green hover:text-background transition-colors disabled:opacity-50"
           >
             {isLooking ? "[Looking up...]" : "[Look Up]"}
@@ -182,28 +229,64 @@ export default function EditPage() {
       {webhookData && (
         <form onSubmit={handleUpdate} className="space-y-6">
           <div className="border border-input-border p-3 bg-input-bg/50">
-            <p className="text-foreground/50 text-sm">Webhook:</p>
+            <p className="text-foreground/50 text-sm">
+              {webhookData.type === "discord" ? "Discord" : "Slack"} Webhook:
+            </p>
             <p className="text-green text-xs break-all">
-              {webhookData.discordWebhookUrl}
+              {webhookData.webhookUrl}
             </p>
           </div>
 
-          {/* Role ID */}
-          <div className="space-y-2">
-            <label className="block text-silver">
-              Role ID to Mention{" "}
-              <span className="text-foreground/50">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={formData.roleId}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, roleId: e.target.value }))
-              }
-              placeholder="123456789012345678"
-              className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
-            />
-          </div>
+          {/* Discord: Role ID */}
+          {webhookData.type === "discord" && (
+            <div className="space-y-2">
+              <label className="block text-silver">
+                Role ID to Mention{" "}
+                <span className="text-foreground/50">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.roleId}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, roleId: e.target.value }))
+                }
+                placeholder="123456789012345678"
+                className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
+              />
+              <p className="text-xs text-foreground/50">
+                <Link
+                  target="_blank"
+                  href="https://discord.com/developers/docs/activities/building-an-activity#step-0-enable-developer-mode"
+                >
+                  Enable Developer Mode
+                </Link>{" "}
+                → Right-click role → Copy Role ID
+              </p>
+            </div>
+          )}
+
+          {/* Slack: Ping Channel */}
+          {webhookData.type === "slack" && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 text-silver cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.pingChannel}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      pingChannel: e.target.checked,
+                    }))
+                  }
+                  className="w-4 h-4 accent-green"
+                />
+                Ping channel on updates
+              </label>
+              <p className="text-xs text-foreground/50">
+                When enabled, messages will include @channel to notify all members
+              </p>
+            </div>
+          )}
 
           {/* Leaderboard URL */}
           <div className="space-y-2">

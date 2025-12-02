@@ -1,16 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+type WebhookType = "discord" | "slack" | null;
 
 function formatHour(hour: number): string {
   if (hour === 0) return "12am";
   if (hour === 12) return "12pm";
   if (hour < 12) return `${hour}am`;
   return `${hour - 12}pm`;
+}
+
+function detectWebhookType(url: string): WebhookType {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "discord.com" || parsed.hostname === "discordapp.com") {
+      return "discord";
+    }
+    if (parsed.hostname === "hooks.slack.com") {
+      return "slack";
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export default function CreatePage() {
@@ -20,12 +37,18 @@ export default function CreatePage() {
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
-    discordWebhookUrl: "",
+    webhookUrl: "",
     roleId: "",
+    pingChannel: false,
     hours: [] as number[],
     leaderboardUrl: "",
     puzzleNotificationHour: 0, // Default to midnight (release time)
   });
+
+  const webhookType = useMemo(
+    () => detectWebhookType(formData.webhookUrl),
+    [formData.webhookUrl]
+  );
 
   const toggleHour = (hour: number) => {
     setFormData((prev) => ({
@@ -41,11 +64,25 @@ export default function CreatePage() {
     setIsSubmitting(true);
     setError(null);
 
+    if (!webhookType) {
+      setError("Please enter a valid Discord or Slack webhook URL");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/webhooks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          webhookUrl: formData.webhookUrl,
+          type: webhookType,
+          roleId: webhookType === "discord" ? formData.roleId : undefined,
+          pingChannel: webhookType === "slack" ? formData.pingChannel : undefined,
+          hours: formData.hours,
+          leaderboardUrl: formData.leaderboardUrl,
+          puzzleNotificationHour: formData.puzzleNotificationHour,
+        }),
       });
 
       const data = await response.json();
@@ -85,7 +122,7 @@ export default function CreatePage() {
       <div>
         <h1 className="text-gold text-lg">--- Create Subscription ---</h1>
         <p className="text-foreground/70 mt-2">
-          Set up Discord notifications for your AoC leaderboard.
+          Set up Discord or Slack notifications for your AoC leaderboard.
         </p>
       </div>
 
@@ -96,57 +133,97 @@ export default function CreatePage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Discord Webhook URL */}
+        {/* Webhook URL */}
         <div className="space-y-2">
           <label className="block text-silver">
-            Discord Webhook URL <span className="text-red-400">*</span>
+            Webhook URL <span className="text-red-400">*</span>
           </label>
           <input
             type="url"
             required
-            value={formData.discordWebhookUrl}
+            value={formData.webhookUrl}
             onChange={(e) =>
               setFormData((prev) => ({
                 ...prev,
-                discordWebhookUrl: e.target.value,
+                webhookUrl: e.target.value,
               }))
             }
-            placeholder="https://discord.com/api/webhooks/..."
+            placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/services/..."
             className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
           />
           <p className="text-xs text-foreground/50">
-            Server Settings → Integrations → Webhooks → Copy URL.{" "}
-            <Link href="/img/adventcord-icon.png" target="_blank">
-              Need a icon?
-            </Link>
+            {webhookType === "discord" && (
+              <>
+                <span className="text-green">Discord detected</span> - Server Settings → Integrations → Webhooks → Copy URL.{" "}
+                <Link href="/img/adventcord-icon.png" target="_blank">
+                  Need an icon?
+                </Link>
+              </>
+            )}
+            {webhookType === "slack" && (
+              <>
+                <span className="text-green">Slack detected</span> - Apps → Incoming Webhooks → Copy Webhook URL
+              </>
+            )}
+            {!webhookType && formData.webhookUrl && (
+              <span className="text-red-400">Unrecognized webhook URL format</span>
+            )}
+            {!formData.webhookUrl && (
+              <>Enter a Discord or Slack webhook URL</>
+            )}
           </p>
         </div>
 
-        {/* Role ID */}
-        <div className="space-y-2">
-          <label className="block text-silver">
-            Role ID to Mention{" "}
-            <span className="text-foreground/50">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={formData.roleId}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, roleId: e.target.value }))
-            }
-            placeholder="123456789012345678"
-            className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
-          />
-          <p className="text-xs text-foreground/50">
-            <Link
-              target="_blank"
-              href="https://discord.com/developers/docs/activities/building-an-activity#step-0-enable-developer-mode"
-            >
-              Enable Developer Mode
-            </Link>{" "}
-            → Right-click role → Copy Role ID
-          </p>
-        </div>
+        {/* Discord: Role ID */}
+        {webhookType === "discord" && (
+          <div className="space-y-2">
+            <label className="block text-silver">
+              Role ID to Mention{" "}
+              <span className="text-foreground/50">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={formData.roleId}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, roleId: e.target.value }))
+              }
+              placeholder="123456789012345678"
+              className="w-full bg-input-bg border border-input-border px-3 py-2 text-foreground placeholder:text-foreground/30 focus:border-green focus:outline-none"
+            />
+            <p className="text-xs text-foreground/50">
+              <Link
+                target="_blank"
+                href="https://discord.com/developers/docs/activities/building-an-activity#step-0-enable-developer-mode"
+              >
+                Enable Developer Mode
+              </Link>{" "}
+              → Right-click role → Copy Role ID
+            </p>
+          </div>
+        )}
+
+        {/* Slack: Ping Channel */}
+        {webhookType === "slack" && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 text-silver cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.pingChannel}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    pingChannel: e.target.checked,
+                  }))
+                }
+                className="w-4 h-4 accent-green"
+              />
+              Ping channel on updates
+            </label>
+            <p className="text-xs text-foreground/50">
+              When enabled, messages will include @channel to notify all members
+            </p>
+          </div>
+        )}
 
         {/* Leaderboard URL */}
         <div className="space-y-2">
@@ -258,7 +335,7 @@ export default function CreatePage() {
         <div className="pt-4 flex gap-4">
           <button
             type="submit"
-            disabled={isSubmitting || formData.hours.length === 0}
+            disabled={isSubmitting || formData.hours.length === 0 || !webhookType}
             className="border border-green px-4 py-2 hover:bg-green hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "[Creating...]" : "[Create Subscription]"}

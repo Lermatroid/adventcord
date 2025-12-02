@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { WebhookType } from "@/db/schema";
 
 /**
  * Validates an AoC leaderboard URL
@@ -53,6 +54,29 @@ export function validateLeaderboardUrl(url: string): {
 }
 
 /**
+ * Detects the webhook type from a URL
+ * Returns "discord", "slack", or null if unrecognized
+ */
+export function detectWebhookType(url: string): WebhookType | null {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+
+    if (hostname === "discord.com" || hostname === "discordapp.com") {
+      return "discord";
+    }
+
+    if (hostname === "hooks.slack.com") {
+      return "slack";
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Validates a Discord webhook URL
  * Expected format: https://discord.com/api/webhooks/ID/TOKEN or https://discordapp.com/api/webhooks/ID/TOKEN
  */
@@ -90,6 +114,71 @@ export function validateDiscordWebhookUrl(url: string): {
 }
 
 /**
+ * Validates a Slack webhook URL
+ * Expected format: https://hooks.slack.com/services/T.../B.../...
+ */
+export function validateSlackWebhookUrl(url: string): {
+  valid: boolean;
+  error?: string;
+} {
+  try {
+    const parsed = new URL(url);
+
+    // Check hostname
+    if (parsed.hostname !== "hooks.slack.com") {
+      return {
+        valid: false,
+        error: "URL must be from hooks.slack.com",
+      };
+    }
+
+    // Check path format: /services/T.../B.../...
+    const pathMatch = parsed.pathname.match(/^\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[A-Za-z0-9]+$/);
+    if (!pathMatch) {
+      return {
+        valid: false,
+        error: "Invalid Slack webhook URL format",
+      };
+    }
+
+    return { valid: true };
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
+}
+
+/**
+ * Validates a webhook URL (Discord or Slack)
+ * Returns the validation result and detected type
+ */
+export function validateWebhookUrl(url: string): {
+  valid: boolean;
+  error?: string;
+  type?: WebhookType;
+} {
+  const detectedType = detectWebhookType(url);
+
+  if (!detectedType) {
+    return {
+      valid: false,
+      error: "URL must be a Discord or Slack webhook URL",
+    };
+  }
+
+  if (detectedType === "discord") {
+    const result = validateDiscordWebhookUrl(url);
+    return { ...result, type: detectedType };
+  }
+
+  if (detectedType === "slack") {
+    const result = validateSlackWebhookUrl(url);
+    return { ...result, type: detectedType };
+  }
+
+  return { valid: false, error: "Unknown webhook type" };
+}
+
+/**
  * Validates a Discord role ID (snowflake format)
  */
 export function validateDiscordRoleId(roleId: string): {
@@ -108,10 +197,11 @@ export function validateDiscordRoleId(roleId: string): {
 
 // Zod schemas for API validation
 export const webhookCreateSchema = z.object({
-  discordWebhookUrl: z.string().url().refine(
-    (url) => validateDiscordWebhookUrl(url).valid,
-    { message: "Invalid Discord webhook URL" }
+  webhookUrl: z.string().url().refine(
+    (url) => validateWebhookUrl(url).valid,
+    { message: "Invalid webhook URL (must be Discord or Slack)" }
   ),
+  type: z.enum(["discord", "slack"]),
   roleId: z
     .string()
     .optional()
@@ -119,6 +209,7 @@ export const webhookCreateSchema = z.object({
       (val) => !val || validateDiscordRoleId(val).valid,
       { message: "Invalid Discord role ID" }
     ),
+  pingChannel: z.boolean().optional(),
   hours: z
     .array(z.number().min(0).max(23))
     .min(1, "Select at least one hour"),

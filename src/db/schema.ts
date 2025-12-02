@@ -1,18 +1,22 @@
 import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
+export type WebhookType = "discord" | "slack";
+
 export const webhooks = sqliteTable(
   "webhooks",
   {
     id: text("id").primaryKey(),
-    discordWebhookUrl: text("discord_webhook_url").notNull().unique(),
-    roleId: text("role_id"),
+    webhookUrl: text("webhook_url").notNull().unique(),
+    type: text("type").$type<WebhookType>().notNull().default("discord"),
+    roleId: text("role_id"), // Discord only: role ID to mention
+    pingChannel: integer("ping_channel", { mode: "boolean" }), // Slack only: whether to use <!channel>
     hours: text("hours").notNull(), // JSON array e.g., "[6, 12, 18]"
     leaderboardUrl: text("leaderboard_url").notNull(),
     puzzleNotificationHour: integer("puzzle_notification_hour"), // null = disabled, 0-23 for hour (EST)
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },
-  (table) => [index("webhook_url_idx").on(table.discordWebhookUrl)]
+  (table) => [index("webhook_url_idx").on(table.webhookUrl)]
 );
 
 export const leaderboardCache = sqliteTable(

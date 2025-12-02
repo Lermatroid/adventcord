@@ -10,7 +10,8 @@ const sourceCodePro = Source_Code_Pro({
 
 export const metadata: Metadata = {
   title: "Adventcord",
-  description: "Discord webhook notifications for Advent of Code leaderboards",
+  description:
+    "Discord & Slack notifications for Advent of Code puzzles and leaderboards",
   icons: {
     icon: "/favicon.ico",
   },

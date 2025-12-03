@@ -2,8 +2,8 @@ import { db, stats } from "@/db";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 
-// Force dynamic rendering to always get fresh data
-export const dynamic = "force-dynamic";
+// Revalidate the page every hour (3600 seconds)
+export const revalidate = 3600;
 
 async function getStatValue(key: string): Promise<number> {
   const stat = await db.query.stats.findFirst({
@@ -20,9 +20,7 @@ export default async function StatsPage() {
     <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-green text-lg">--- Stats ---</h1>
-        <p className="text-foreground/80">
-          Adventcord usage statistics
-        </p>
+        <p className="text-foreground/80">Adventcord usage statistics</p>
       </div>
 
       <div className="border border-input-border p-6 space-y-6">
@@ -53,19 +51,16 @@ export default async function StatsPage() {
 
       <div className="space-y-2">
         <p className="text-foreground/50 text-xs">
-          * Stats are updated in real-time as subscriptions are created and notifications are sent.
+          * Stats are updated once an hour as new subscriptions are created and
+          notifications are sent.
         </p>
       </div>
 
       <div className="pt-4">
-        <Link
-          href="/"
-          className="text-green hover:text-link-hover"
-        >
+        <Link href="/" className="text-green hover:text-link-hover">
           ← Back to Home
         </Link>
       </div>
     </div>
   );
 }
-

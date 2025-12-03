@@ -41,6 +41,13 @@ export const logs = sqliteTable("logs", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+// Stats table - pseudo key-value store for tracking counts
+export const stats = sqliteTable("stats", {
+  key: text("key").primaryKey(),
+  value: integer("value").notNull().default(0),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 // Type exports
 export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
@@ -48,4 +55,6 @@ export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
 export type NewLeaderboardCache = typeof leaderboardCache.$inferInsert;
 export type Log = typeof logs.$inferSelect;
 export type NewLog = typeof logs.$inferInsert;
+export type Stat = typeof stats.$inferSelect;
+export type NewStat = typeof stats.$inferInsert;
 

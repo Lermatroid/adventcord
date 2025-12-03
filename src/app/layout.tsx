@@ -37,6 +37,7 @@ export default function RootLayout({
                 <Link href="/edit">[View / Edit]</Link>
                 <span className="text-foreground/50">|</span>
                 <Link href="/faqs">[FAQs]</Link>
+                <Link href="/stats">[Stats]</Link>
                 <Link href="/donate">[Donate]</Link>
               </div>
             </nav>

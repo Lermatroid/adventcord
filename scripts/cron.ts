@@ -20,7 +20,7 @@
  *   bun run cron --test-url https://hooks.slack.com/services/... --test-leaderboard https://adventofcode.com/...
  */
 
-import { db, webhooks, leaderboardCache, logs } from "../src/db";
+import { db, webhooks, leaderboardCache, logs, incrementStat } from "../src/db";
 import type { WebhookType } from "../src/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -588,6 +588,13 @@ async function main() {
   if (activeWebhooks.length === 0) {
     // Only puzzle notifications were sent, skip leaderboard section
     const duration = Date.now() - startTime;
+
+    // Update the notifications sent stat for puzzle notifications
+    if (puzzleStats.success > 0 && !cliArgs.dryRun) {
+      await incrementStat("notifications_sent", puzzleStats.success);
+      console.log(`\nUpdated notifications_sent stat: +${puzzleStats.success}`);
+    }
+
     console.log("\n========================================");
     console.log("Summary:");
     console.log(
@@ -721,6 +728,15 @@ async function main() {
   }
 
   const duration = Date.now() - startTime;
+
+  // Update the notifications sent stat (puzzle notifications + leaderboard updates)
+  const totalNotificationsSent = puzzleStats.success + successCount;
+  if (totalNotificationsSent > 0 && !cliArgs.dryRun) {
+    await incrementStat("notifications_sent", totalNotificationsSent);
+    console.log(
+      `\nUpdated notifications_sent stat: +${totalNotificationsSent}`
+    );
+  }
 
   console.log("\n========================================");
   console.log("Summary:");

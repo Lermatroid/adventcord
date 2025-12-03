@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import { db, webhooks } from "@/db";
+import { db, webhooks, incrementStat } from "@/db";
 import { webhookCreateSchema } from "@/lib/validation";
 import { eq } from "drizzle-orm";
 
@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
     };
 
     await db.insert(webhooks).values(newWebhook);
+
+    // Increment the leaderboards subscribed stat
+    await incrementStat("leaderboards_subscribed");
 
     return NextResponse.json(
       {

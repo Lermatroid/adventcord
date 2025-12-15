@@ -24,6 +24,10 @@ export default function FAQPage() {
           <Link href="/donate">donations</Link> are greatly appreciated {":)"}.
           They are used to cover the cost of the server and other expenses.
         </FAQItem>
+        <FAQItem question="When does Adventcord run?">
+          Adventcord runs throughout the duration of the Advent of Code event
+          until 24hr after the last puzzle is released.
+        </FAQItem>
         <FAQItem question="Does it follow the rules of the Advent of Code API?">
           Yep. We cache leaderboard data to avoid API abuse.
         </FAQItem>

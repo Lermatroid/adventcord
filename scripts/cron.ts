@@ -5,9 +5,9 @@
  *
  * Debug flags:
  *   --hour <0-23>      Override the current hour
- *   --day <1-25>       Override the current day (implies December)
+ *   --day <N>          Override the current day (implies December)
  *   --dry-run          Don't send webhooks, just log what would happen
- *   --force-aoc        Force AoC season (Dec 1-25) even outside December
+ *   --force-aoc        Force AoC season even outside configured dates
  *   --webhook-id <id>  Only process a specific webhook
  *   --skip-cache       Ignore cache and fetch fresh leaderboard data
  *   --test-url <url>   Send a test message directly to a webhook URL (bypasses DB)
@@ -40,6 +40,11 @@ import {
   validateLeaderboardUrl,
   detectWebhookType,
 } from "../src/lib/validation";
+import {
+  isAocPuzzleSeason,
+  isAocLeaderboardSeason,
+  getAocDateRangeString,
+} from "../src/lib/aoc-config";
 
 // Parse CLI arguments
 function parseArgs(): {
@@ -77,8 +82,8 @@ function parseArgs(): {
         break;
       case "--day":
         result.day = parseInt(args[++i], 10);
-        if (isNaN(result.day) || result.day < 1 || result.day > 25) {
-          console.error("Invalid --day value (must be 1-25)");
+        if (isNaN(result.day) || result.day < 1 || result.day > 31) {
+          console.error("Invalid --day value (must be 1-31)");
           process.exit(1);
         }
         break;
@@ -111,9 +116,9 @@ Usage: bun run cron [options]
 
 Options:
   --hour <0-23>           Override the current hour
-  --day <1-25>            Override the current day (implies December)
+  --day <N>               Override the current day (implies December)
   --dry-run               Don't send webhooks, just log what would happen
-  --force-aoc             Force AoC season (Dec 1-25) even outside December
+  --force-aoc             Force AoC season even outside configured dates
   --webhook-id <id>       Only process a specific webhook (by DB id)
   --webhook-url <url>     Only process a specific webhook (by webhook URL)
   --skip-cache            Ignore cache and fetch fresh leaderboard data
@@ -182,13 +187,6 @@ function getEasternTimeInfo(): {
   );
 
   return { hour, month, day, year };
-}
-
-/**
- * Checks if today is during Advent of Code (Dec 1-25)
- */
-function isAocSeason(month: number, day: number): boolean {
-  return month === 12 && day >= 1 && day <= 25;
 }
 
 /**
@@ -500,13 +498,23 @@ async function main() {
   const day = cliArgs.day ?? eastern.day;
   const month = cliArgs.day ? 12 : eastern.month; // If day is overridden, assume December
   const year = eastern.year;
-  const isDuringAoc = cliArgs.forceAoc || isAocSeason(month, day);
+
+  // Puzzle season: when new puzzles are released (configured dates)
+  const isDuringPuzzleSeason =
+    cliArgs.forceAoc || isAocPuzzleSeason(month, day);
+  // Leaderboard season: puzzle season + 24h after last puzzle for final updates
+  const isDuringLeaderboardSeason =
+    cliArgs.forceAoc || isAocLeaderboardSeason(month, day);
 
   console.log("========================================");
   console.log(`Adventcord - Cron Job`);
   console.log(`Time: ${new Date().toISOString()}`);
   console.log(`Eastern: ${month}/${day}/${year} at ${currentHour}:00`);
-  console.log(`AoC Season: ${isDuringAoc ? "Yes" : "No"}`);
+  console.log(
+    `AoC Season: ${getAocDateRangeString()} (puzzles: ${
+      isDuringPuzzleSeason ? "Yes" : "No"
+    }, leaderboard: ${isDuringLeaderboardSeason ? "Yes" : "No"})`
+  );
 
   // Show debug mode info
   if (
@@ -555,8 +563,8 @@ async function main() {
 
   let puzzleStats = { success: 0, errors: 0, deleted: 0 };
 
-  // Send puzzle notifications if during AoC season
-  if (isDuringAoc) {
+  // Send puzzle notifications if during AoC puzzle season
+  if (isDuringPuzzleSeason) {
     puzzleStats = await sendPuzzleNotifications(
       allWebhooks,
       currentHour,
@@ -565,16 +573,22 @@ async function main() {
     );
   }
 
-  // Get webhooks for leaderboard updates this hour
-  const activeWebhooks = allWebhooks.filter((webhook) => {
-    const hours: number[] = JSON.parse(webhook.hours);
-    return hours.includes(currentHour);
-  });
+  // Get webhooks for leaderboard updates this hour (only during leaderboard season)
+  const activeWebhooks = isDuringLeaderboardSeason
+    ? allWebhooks.filter((webhook) => {
+        const hours: number[] = JSON.parse(webhook.hours);
+        return hours.includes(currentHour);
+      })
+    : [];
 
   console.log(`\n--- Leaderboard Updates ---`);
-  console.log(
-    `Found ${activeWebhooks.length} webhooks scheduled for hour ${currentHour}\n`
-  );
+  if (!isDuringLeaderboardSeason) {
+    console.log("Outside leaderboard season, skipping leaderboard updates.\n");
+  } else {
+    console.log(
+      `Found ${activeWebhooks.length} webhooks scheduled for hour ${currentHour}\n`
+    );
+  }
 
   if (
     activeWebhooks.length === 0 &&
@@ -740,7 +754,7 @@ async function main() {
 
   console.log("\n========================================");
   console.log("Summary:");
-  if (isDuringAoc) {
+  if (isDuringPuzzleSeason) {
     console.log(
       `  Puzzle notifications: ${puzzleStats.success} sent, ${puzzleStats.errors} errors`
     );

@@ -5,7 +5,7 @@ Discord webhook notifications for [Advent of Code](https://adventofcode.com) lea
 ## ✨ Features
 
 - **Leaderboard Updates** — Get your private leaderboard standings sent to Discord at scheduled hours
-- **New Puzzle Notifications** — Be notified when a new puzzle drops (Dec 1-25)
+- **New Puzzle Notifications** — Be notified when a new puzzle drops (configurable dates)
 - **Role Mentions** — Optionally ping a Discord role with updates
 - **No Session Token Required** — Uses AoC's public read-only leaderboard links
 - **Smart Caching** — Respects AoC's API guidelines with intelligent caching
@@ -50,9 +50,17 @@ bun run dev
 #### Environment Variables
 
 ```env
+# Database (required)
 TURSO_DATABASE_URL=libsql://your-database.turso.io
 TURSO_AUTH_TOKEN=your-auth-token
+
+# AoC Season Configuration (optional - defaults shown)
+NEXT_PUBLIC_AOC_START_DAY=1   # First day of puzzles
+NEXT_PUBLIC_AOC_END_DAY=12    # Last day of puzzles
+NEXT_PUBLIC_AOC_MONTH=12      # Month (12 = December)
 ```
+
+> **Note:** Leaderboard updates continue for 24 hours after the last puzzle day to capture final standings.
 
 ## 🏗️ Architecture
 

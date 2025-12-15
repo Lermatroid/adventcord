@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getAocDateRangeString } from "@/lib/aoc-config";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -296,7 +297,7 @@ export default function CreatePage() {
             ))}
           </select>
           <p className="text-xs text-foreground/50">
-            Get notified when a new puzzle is released (Dec 1-25)
+            Get notified when a new puzzle is released ({getAocDateRangeString()})
           </p>
         </div>
 
